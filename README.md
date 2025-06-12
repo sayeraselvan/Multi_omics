@@ -1,1 +1,1 @@
-# List of custom made scripts for the multi-omics I performed
+# few custom made scripts for the multi-omics dataset (has to be updated)
