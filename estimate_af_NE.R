@@ -92,69 +92,6 @@ cov_BC_gen_df <- file_manage_and_rename(cov_BC_gen)
 af_SC_gen_df <- file_manage_and_rename_SC(af_SC_gen)
 cov_SC_gen_df <- file_manage_and_rename_SC(cov_SC_gen)
 
-### vidya and yiwen script:
-
-Ne.estimator <- function(dp, af, replicates, nb_SNPs, nb_rounds, time,
-                         poolSize, nb_replicates, census, chrom) {
-  chr_interest <- chrom
-  dt.dp <- as.data.table(dp[dp$CHROM == chr_interest,])
-  dt.af <- as.data.table(af[af$CHROM == chr_interest,])
-  setkey(dt.af, CHROM, POS)
-  setkey(dt.dp, CHROM, POS)
-  # dt.af[, var:= rowVars(as.matrix(dt.af[,6:13]))]
-  # dt.af <- dt.af[var!=0, -14]
-  # dt.dp <-dt.dp[dt.af[,.(CHROM,POS)]]
-  ne_estimates <- NULL
-  for (r in replicates){ 
-    print(r)
-    # if (times[1]==0) {
-    pref.af_i <- paste0(time[1], "_r", r) #time point i
-    pref.dp_i <- paste0(time[1], "_r", r) #time point i
-    # }
-    # else{
-    #   pref.af_i <- paste0("xf.","f",times[1], ".r", r) #time point i
-    #   pref.dp_i <- paste0("dp.","f",times[1], ".r", r) #time point i
-    # }
-    pref.af_j <- paste0(time[2], "_r", r) #time point j with j>i
-    pref.dp_j <- paste0(time[2], "_r", r) #time point j with j>i
-    
-    for(j in seq_len(nb_rounds)){
-      cov_trial <- sample_n(dt.dp, size = nb_SNPs)
-      SNP <- cov_trial[,.(CHROM,POS)] 
-      af_trial <- dt.af[POS %in% SNP$POS,]
-      pi <- unlist(subset(af_trial, select = pref.af_i))
-      pj <- unlist(subset(af_trial, select = pref.af_j))
-      covi <- unlist(subset(cov_trial, select = pref.dp_i))
-      covj <- unlist(subset(cov_trial, select = pref.dp_j))
-      ne <- estimateNe(p0 = pi, pt = pj, cov0 = covi, covt = covj, t = time[2]-time[1], 
-                       ploidy = 2, truncAF = 0.05, method = "P.planI", poolSize = poolSize, Ncensus = census)
-      ne_estimates <- rbind(ne_estimates, data.frame(replicate = r, start = time[1], end = time[2], trial = j,  ne = ne))
-    } 
-  }
-  #print(ne_estimates)
-  ne_estimates <- na.omit(ne_estimates)
-  ne <- ne_estimates$ne
-  if(length(which(ne<0))>0){
-    ne_estimates <- ne_estimates[-which(ne<0)]
-  }
-  ne_estimates$replicate <- as.factor(ne_estimates$replicate)
-  # if(length(which(ne<0))>0){ne_estimates <- ne_estimates[-which(ne<0)]}; 
-  # plot <- ggplot(ne_estimates) + geom_boxplot(aes(replicate, ne, group = replicate))
-  # print(plot)
-  median_ne <- t(sapply(replicates, function(x) {idx <- which(ne_estimates$replicate == x);
-  val <- sort(ne_estimates$ne[idx]);
-  med <- median(val);
-  va <- var(val);
-  up <- val[qbinom(1-0.025, length(idx), 0.5)+1]; # CI 95% of a median
-  down <- val[qbinom(0.025, length(idx), 0.5)]; # CI 95% of a median
-  round(c(down,med,up,va))}))
-  NE_result <- data.frame(replicate = replicates, type = rep(chrom, nb_replicates), 
-                          start = rep(time[1], nb_replicates), end = rep(time[2], nb_replicates), 
-                          median_ne = median_ne[, 2], var_ne = median_ne[, 4],
-                          CI = paste0(median_ne[,1], "-",median_ne[,3]))
-  NE_result$replicate <- as.factor(NE_result$replicate)
-  return(NE_result)
-}
 
 # clean_1 is removing only the 0s in the dataframe of af
 af_BC_gen_df[, 3:ncol(af_BC_gen_df)] <- lapply(af_BC_gen_df[, 3:ncol(af_BC_gen_df)], as.numeric)
