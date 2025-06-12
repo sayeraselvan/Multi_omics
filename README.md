@@ -1,1 +1,1 @@
-# List of custom made scripts for the tailor-jobs I performed
+# List of custom made scripts for the multi-omics I performed
